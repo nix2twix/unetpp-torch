@@ -1,0 +1,20 @@
+{
+  "paths": {
+    "images": "C:\\Users\\Victory\\YandexDisk\\РАБОТА\\BIOFILMS\\unet-project\\unet-project-torch\\dataset\\images",
+    "masks": "C:\\Users\\Victory\\YandexDisk\\РАБОТА\\BIOFILMS\\unet-project\\unet-project-torch\\dataset\\masks",
+    "output_dir": "C:\\Users\\Victory\\YandexDisk\\РАБОТА\\BIOFILMS\\unet-project\\unet-project-torch\\checkpoints"
+  },
+  "train": {
+    "batch_size": 100,
+    "epochs": 100,
+    "criterion": "CrossEntropyLoss",
+    "optimizer": None,
+    "learning_rate": 1e-4
+  },
+  "model": {
+    "encoder_name": "resnet34",
+    "encoder_weights": "imagenet",
+    "num_classes": 2,
+    "activation": "softmax"
+  }
+}
