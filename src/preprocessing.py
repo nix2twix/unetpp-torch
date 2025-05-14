@@ -1,4 +1,4 @@
-# src/dataset_split.py
+# src/preproces.py
 import os
 import numpy as np
 import matplotlib.pyplot as plt

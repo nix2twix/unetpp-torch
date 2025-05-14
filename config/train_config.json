@@ -1,12 +1,13 @@
 {
   "paths": {
-    "images": "C:\\Users\\Victory\\YandexDisk\\РАБОТА\\BIOFILMS\\unet-project\\unet-project-torch\\dataset\\images",
-    "masks": "C:\\Users\\Victory\\YandexDisk\\РАБОТА\\BIOFILMS\\unet-project\\unet-project-torch\\dataset\\masks",
-    "output_dir": "C:\\Users\\Victory\\YandexDisk\\РАБОТА\\BIOFILMS\\unet-project\\unet-project-torch\\checkpoints"
+    "images": "M:\\train-dataset\\test_20\\images",
+    "masks": "M:\\train-dataset\\test_20\\masks",
+    "colored_masks": "M:\\train-dataset\\test_20\\masks\\colored-masks",
+    "output_dir": "M:\train-dataset\\checkpoints"
   },
   "train": {
-    "batch_size": 100,
-    "epochs": 100,
+    "batch_size": 2,
+    "epochs": 2,
     "criterion": "CrossEntropyLoss",
     "optimizer": null,
     "learning_rate": 1e-4

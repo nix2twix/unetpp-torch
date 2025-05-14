@@ -23,6 +23,7 @@
     <Compile Include="src\preprocessing.py" />
     <Compile Include="src\main.py" />
     <Compile Include="src\model.py" />
+    <Compile Include="src\test.py" />
     <Compile Include="src\train.py" />
     <Compile Include="src\utils.py" />
   </ItemGroup>

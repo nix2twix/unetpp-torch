@@ -9,62 +9,49 @@ from tqdm import tqdm
 from utils import calculate_iou, calculate_dice
 import numpy as np
 
-def train_model(model, train_loader, device, cfg):
-    optimizer = torch.optim.Adam(model.parameters(), lr=cfg["train"]["learning_rate"])
+def trainModel(model, train_loader, device, cfg):
+    #optimizer = torch.optim.Adam(model.parameters(), lr=cfg["train"]["learning_rate"])
     
-    if (cfg["train"]["critetrion"] == "CrossEntropyLoss"):
+    if (cfg["train"]["criterion"] == "CrossEntropyLoss"):
         criterion = torch.nn.CrossEntropyLoss() 
     else:
         criterion = torch.nn.MSELoss()
     
     epochs = cfg["train"]["epochs"]
     train_losses = []
-    train_ious = []
-    train_dices = []
     
     print(f"""---> TRAINING CONFIGURATION <---
           Loss functions is: {criterion}
-          Batch size is:
-          Device is:
-          Learning rate is:
+          Batch size is: {cfg["train"]["batch_size"]}
+          Device is: {device}
           Epoch counts is: {epochs}
     """)
     
-    # Процесс обучения
     for epoch in range(epochs):
         model.train()
         
         train_loss = 0
-        iou_total = 0
-        dice_total = 0
         
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", ncols=100):
             images, masks = batch
             images, masks = images.to(device), masks.to(device)
 
-            optimizer.zero_grad()
+            #optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, masks)
             loss.backward()
-            optimizer.step()
+            #optimizer.step()
             train_loss += loss.item()
             preds = outputs.argmax(dim=1) # softmax
-            iou_total += calculate_iou(preds, masks)
-            dice_total += calculate_dice(preds, masks)
             
-        train_losses.append(train_loss / len(train_loader)) #зачем делить?
-        train_ious.append(iou_total / len(train_loader))
-        train_dices.append(dice_total / len(train_loader))
-
+        train_losses.append(train_loss / len(train_loader)) #зачем делить на len(train_loader)?
         visualize_predictions(model, train_loader, cfg, device, mode="train", epoch=epoch)
 
         print(f"Epoch [{epoch+1}/{epochs}] - "
-              f"Loss: {train_losses[-1]:.4f}, "
-              f"IoU: {train_ious[-1]:.4f}, "
-              f"Dice: {train_dices[-1]:.4f}")
+              f"Loss: {train_losses[-1]:.4f}")
         
-        torch.save(model.state_dict(), f"{cfg['paths']['output_dir']}/model_epoch_{epoch+1}.pth")
-
+    
+    torch.save(model.state_dict(), f"{cfg['paths']['output_dir']}/model_epoch_{epochs}.pth")
     plot_loss_graph(train_losses, cfg)
 
 def visualize_predictions(model, data_loader, cfg, device, mode="train", epoch=0, num_images=5):
