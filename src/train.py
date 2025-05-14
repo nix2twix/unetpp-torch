@@ -6,7 +6,7 @@ import os
 import torch
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from utils import calculate_iou, calculate_dice, print_prediction_info
+from utils import calculate_iou, calculate_dice
 import numpy as np
 
 def train_model(model, train_loader, device, cfg):
@@ -24,6 +24,9 @@ def train_model(model, train_loader, device, cfg):
     
     print(f"""---> TRAINING CONFIGURATION <---
           Loss functions is: {criterion}
+          Batch size is:
+          Device is:
+          Learning rate is:
           Epoch counts is: {epochs}
     """)
     

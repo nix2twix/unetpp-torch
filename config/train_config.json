@@ -8,7 +8,7 @@
     "batch_size": 100,
     "epochs": 100,
     "criterion": "CrossEntropyLoss",
-    "optimizer": None,
+    "optimizer": null,
     "learning_rate": 1e-4
   },
   "model": {
