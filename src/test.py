@@ -6,18 +6,27 @@ import os
 from PIL import Image
 
 def iou_score(outputs, targets, smooth=1e-6):
-    preds = torch.argmax(outputs, dim=1)
-    intersection = ((preds == 1) & (targets == 1)).float().sum((1, 2))
-    union = ((preds == 1) | (targets == 1)).float().sum((1, 2))
+    preds = torch.argmax(outputs, dim=1)  # [B, H, W]
+    preds = preds.view(preds.size(0), -1)  # [B, H*W] вектор длиной H*W
+    targets = targets.view(targets.size(0), -1)  # [B, H*W]
+
+    intersection = ((preds == 1) & (targets == 1)).float().sum(1) # sum по всем пикселям внутри одного изображения
+    union = ((preds == 1) | (targets == 1)).float().sum(1)
+    
     iou = (intersection + smooth) / (union + smooth)
     return iou.mean().item()
 
 def dice_score(outputs, targets, smooth=1e-6):
-    preds = torch.argmax(outputs, dim=1)
-    intersection = ((preds == 1) & (targets == 1)).float().sum((1, 2))
-    total = preds.sum((1, 2)) + targets.sum((1, 2))
-    dice = (2.0 * intersection + smooth) / (total + smooth)
+    preds = torch.argmax(outputs, dim=1)  # [B, H, W]
+    preds = preds.view(preds.size(0), -1)  # [B, H*W]
+    targets = targets.view(targets.size(0), -1)  # [B, H*W]
+
+    intersection = ((preds == 1) & (targets == 1)).float().sum(1)
+    total = (preds == 1).float().sum(1) + (targets == 1).float().sum(1)
+
+    dice = (2 * intersection + smooth) / (total + smooth)
     return dice.mean().item()
+
 
 def test_model(model, test_loader, test_dataset, device, visualize=True, max_vis=5):
     model.eval()
@@ -35,7 +44,7 @@ def test_model(model, test_loader, test_dataset, device, visualize=True, max_vis
             iou = iou_score(outputs, masks)
             dice = dice_score(outputs, masks)
 
-            print(f"[{i}] IoU: {iou:.4f} | Dice: {dice:.4f}")
+            print(f"[{i}] IoU: {iou:.8f} | Dice: {dice:.8f}")
             total_iou += iou
             total_dice += dice
             count += 1
@@ -66,4 +75,4 @@ def test_model(model, test_loader, test_dataset, device, visualize=True, max_vis
 
                 vis_count += 1
 
-    print(f"\n=== TOTAL IoU: {total_iou / count:.4f} | Dice: {total_dice / count:.4f} ===")
+    print(f"\n=== TOTAL IoU: {total_iou / count:.8f} | Dice: {total_dice / count:.8f} ===")

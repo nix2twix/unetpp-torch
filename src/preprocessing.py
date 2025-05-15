@@ -71,7 +71,7 @@ def binarizeMask(maskPath, maskMode, masksList, targetClassColor, secondClassCol
     with Image.open(maskPath) as mask:
         originalMask = mask.convert(maskMode)
 
-    maskNP = np.array(originalMask)
+    maskNP = np.array(originalMask.convert("RGB"))
     print(f"The mask {os.path.basename(maskPath)} [{originalMask.size[0]} x {originalMask.size[1]}]" 
                 + f" ({originalMask.size[0] * originalMask.size[1]} pixels)")
        
@@ -87,8 +87,8 @@ def binarizeMask(maskPath, maskMode, masksList, targetClassColor, secondClassCol
     print(f"Total pixels in not target classes {countOtherClasses}\n")
 
     # ---> Бинаризация
-    targetRGB = next((rgb for rgb, name in masksList.items() if rgb == targetClassColor), None)
-    bgRGB = next((rgb for rgb, name in masksList.items() if rgb == secondClassColor), None)
+    targetRGB = next((rgb for rgb in masksList.items() if rgb == targetClassColor), None)
+    bgRGB = next((rgb for rgb in masksList.items() if rgb == secondClassColor), None)
 
     if targetRGB is None:
         raise ValueError(f"Class '{targetClassColor}' not found in {maskPath}")
@@ -105,7 +105,7 @@ def binarizeMask(maskPath, maskMode, masksList, targetClassColor, secondClassCol
     if saveDir:
         os.makedirs(saveDir, exist_ok=True)
         save_path = os.path.join(saveDir, os.path.splitext(os.path.basename(maskPath))[0] + ".png")
-        Image.fromarray(binMask * 255).save(save_path)
+        Image.fromarray((binMask * 255).astype(np.uint8)).save(save_path)
 
     if idx is not None and idx < vizN:
         fig, axs = plt.subplots(1, 2, figsize=(8, 4))

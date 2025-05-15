@@ -38,17 +38,21 @@ def trainModel(model, train_loader, device, cfg):
 
             #optimizer.zero_grad()
             outputs = model(images)
+            logits = outputs  # если model не содержит активацию
+            print(logits.shape)  # [B, 2, 512, 512]
+            print(logits)  # логиты в центре картинки
+
             loss = criterion(outputs, masks)
             loss.backward()
             #optimizer.step()
             train_loss += loss.item()
-            preds = outputs.argmax(dim=1) # softmax
+            preds = outputs.softmax(dim=1)
             
         train_losses.append(train_loss / len(train_loader)) #зачем делить на len(train_loader)?
         visualize_predictions(model, train_loader, cfg, device, mode="train", epoch=epoch)
 
         print(f"Epoch [{epoch+1}/{epochs}] - "
-              f"Loss: {train_losses[-1]:.4f}")
+              f"Loss: {train_losses[-1]:.8f}")
         
     
     torch.save(model.state_dict(), f"{cfg['paths']['output_dir']}/model_epoch_{epochs}.pth")

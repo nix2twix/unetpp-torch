@@ -61,15 +61,15 @@ class BiofilmDataset(Dataset):
         image = Image.open(self.image_paths[idx]).convert('L')  # grayscale
         mask = Image.open(self.mask_paths[idx]).convert('L')
         image = self.make_clahe(image)
-        
         mask = np.array(mask)
         mask = (mask > 127).astype(np.uint8)
 
         augmented = self.transform(image=np.array(image), mask=mask)
         image = augmented['image']
-        mask = augmented['mask'].long()  # ??? для CrossEntropyLoss
+        mask = augmented['mask'].long()  
 
         return image, mask
+
 
 def splitDatasetInDirs(trainSamplesCounts=80, testSamplesCounts=20,
                        sourceImgDir=None, sourceMasksDir=None, sourceColoredMasks = None, outputBaseDir=None):

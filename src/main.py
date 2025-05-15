@@ -30,9 +30,8 @@ def main():
     #load_checkpoint(model, "/home/VizaVi/unet-project-torch/checkpoints/model_epoch_30.pth")
     #model.eval()
 
-    test_model(model, test_loader, test_dataset, device, visualize=True, max_vis=30)
-
-
+    test_model(model, test_loader, device, visualize=True, max_vis=30)
+        
 def mainGlobal():
     # ---> MASKS PREPROCESSING
     """ 
@@ -91,11 +90,12 @@ def mainGlobal():
 
     # ---> MAKING DATASET SPLIT 
     splitDatasetInDirs(
-    trainSamplesCounts=80,
-    testSamplesCounts=20,
-    sourceImgDir=r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\unet-project-torch\dataset\images",
-    sourceMasksDir=r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\unet-project-torch\dataset\masks",
-    outputBaseDir=r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\unet-project-torch\train-dataset"
+        trainSamplesCounts=80,
+        testSamplesCounts=20,
+        sourceImgDir=r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\dataset\images",
+        sourceColoredMasksDir = r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\dataset\masks\croped-colored",
+        sourceMasksDir=r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\dataset\masks",
+        outputBaseDir=r"M:\train-dataset"
     )
     trainDatasetPath = r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\unet-project-torch\train-dataset\train_80"
 
