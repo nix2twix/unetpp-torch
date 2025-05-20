@@ -6,11 +6,10 @@ import os
 import torch
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from utils import calculate_iou, calculate_dice
 import numpy as np
 
 def trainModel(model, train_loader, device, cfg):
-    #optimizer = torch.optim.Adam(model.parameters(), lr=cfg["train"]["learning_rate"])
+    optimizer = torch.optim.Adam(model.parameters(), lr=cfg["train"]["learning_rate"])
     
     if (cfg["train"]["criterion"] == "CrossEntropyLoss"):
         criterion = torch.nn.CrossEntropyLoss() 
@@ -24,7 +23,7 @@ def trainModel(model, train_loader, device, cfg):
           Loss functions is: {criterion}
           Batch size is: {cfg["train"]["batch_size"]}
           Device is: {device}
-          Epoch counts is: {epochs}
+          Epoch count is: {epochs}
     """)
     
     for epoch in range(epochs):
@@ -33,35 +32,34 @@ def trainModel(model, train_loader, device, cfg):
         train_loss = 0
         
         for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", ncols=100):
-            images, masks = batch
+            images, imgpaths, masks, maskpaths, color_masks, cmaskspaths = batch
             images, masks = images.to(device), masks.to(device)
 
-            #optimizer.zero_grad()
+            optimizer.zero_grad()
             outputs = model(images)
-            logits = outputs  # если model не содержит активацию
-            print(logits.shape)  # [B, 2, 512, 512]
-            print(logits)  # логиты в центре картинки
-
             loss = criterion(outputs, masks)
             loss.backward()
-            #optimizer.step()
+            optimizer.step()
             train_loss += loss.item()
-            preds = outputs.softmax(dim=1)
             
-        train_losses.append(train_loss / len(train_loader)) #зачем делить на len(train_loader)?
+        train_losses.append(train_loss / len(train_loader)) 
         visualize_predictions(model, train_loader, cfg, device, mode="train", epoch=epoch)
 
         print(f"Epoch [{epoch+1}/{epochs}] - "
-              f"Loss: {train_losses[-1]:.8f}")
+              f"Loss: {train_losses[-1]:.4f}")
         
-    
-    torch.save(model.state_dict(), f"{cfg['paths']['output_dir']}/model_epoch_{epochs}.pth")
+        if epoch % 50 == 0:
+            torch.save(model.state_dict(), f"{cfg['paths']['output_dir']}/model_epoch_{epoch}.pth")
+            print(f"---> Model saved on epoch {epoch}")
+        
+    torch.save(model.state_dict(), f"{cfg['paths']['output_dir']}/final_model_epoch_{epochs}.pth")
+    print(f"---> FINAL model saved on epoch {epochs} in {cfg['paths']['output_dir']}/final_model_epoch_{epochs}.pth")
     plot_loss_graph(train_losses, cfg)
 
 def visualize_predictions(model, data_loader, cfg, device, mode="train", epoch=0, num_images=5):
     model.eval()
 
-    images, masks = next(iter(data_loader)) 
+    images, imgpaths, masks, maskpaths, color_masks, cmaskspaths = next(iter(data_loader)) 
     images, masks = images.to(device), masks.to(device)
 
     with torch.no_grad():
@@ -96,7 +94,22 @@ def plot_loss_graph(train_losses, cfg):
     plt.legend()
     plt.grid(True)
     plt.show() 
-    # plt.savefig(f"{cfg['paths']['output_dir']}/loss_curve.png")
+    plt.savefig(f"{cfg['paths']['output_dir']}/loss_curve.png")
+    plt.close()
+    print(f"---> Loss curve saved in {cfg['paths']['output_dir']}/loss_curve.png")
+
+def plot_loss_graph(train_losses, cfg):
+    epochs = range(1, len(train_losses) + 1)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(epochs, train_losses, label="Train Loss", color="blue")
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.title("Training Loss per Epoch")
+    plt.legend()
+    plt.grid(True)
+    plt.show() 
+    plt.savefig(f"{cfg['paths']['output_dir']}/loss_curve.png")
     plt.close()
 
 

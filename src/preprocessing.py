@@ -135,7 +135,7 @@ def cropLineBelow(imgPIL, countPx=120):
 
 def slidingWindowPatch(imgPIL, img_name, patch_size=(512, 512), stride=(128, 128),
                        save_dir=None, visualize=True):
-    imgPIL = cropLineBelow(imgPIL)
+    imgPIL = cropLineBelow(imgPIL, countPx=128)
     img_np = np.array(imgPIL)
     img_height, img_width = img_np.shape[:2]
 

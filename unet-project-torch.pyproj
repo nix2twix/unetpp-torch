@@ -12,6 +12,7 @@
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterId />
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
@@ -25,15 +26,8 @@
     <Compile Include="src\model.py" />
     <Compile Include="src\test.py" />
     <Compile Include="src\train.py" />
-    <Compile Include="src\utils.py" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="config\.ipynb_checkpoints\train_config-checkpoint.json" />
-    <Content Include="config\train_config.json" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="config\" />
-    <Folder Include="config\.ipynb_checkpoints\" />
     <Folder Include="src" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />

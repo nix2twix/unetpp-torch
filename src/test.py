@@ -4,75 +4,120 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from PIL import Image
+from src.model import build_model
+def load_checkpoint(model, checkpoint_path):
+    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    model.load_state_dict(checkpoint)
+    print(f"Model loaded from: {checkpoint_path}")
 
-def iou_score(outputs, targets, smooth=1e-6):
-    preds = torch.argmax(outputs, dim=1)  # [B, H, W]
-    preds = preds.view(preds.size(0), -1)  # [B, H*W] вектор длиной H*W
-    targets = targets.view(targets.size(0), -1)  # [B, H*W]
+def iou_score(preds, masks, eps=1e-6): 
+    intersection = torch.logical_and(preds == 1, masks == 1).sum(dim=(1, 2))
+    union = torch.logical_or(preds == 1, masks == 1).sum(dim=(1, 2))
+    iou = intersection / (union + eps)
+    return iou
 
-    intersection = ((preds == 1) & (targets == 1)).float().sum(1) # sum по всем пикселям внутри одного изображения
-    union = ((preds == 1) | (targets == 1)).float().sum(1)
-    
-    iou = (intersection + smooth) / (union + smooth)
-    return iou.mean().item()
+def dice_score(preds, masks, eps=1e-6):
+    intersection = torch.logical_and(preds == 1, masks == 1).sum(dim=(1, 2))
+    total = preds.sum(dim=(1, 2)) + masks.sum(dim=(1, 2))
+    dice = (2 * intersection) / (total + eps)
+    return dice
 
-def dice_score(outputs, targets, smooth=1e-6):
-    preds = torch.argmax(outputs, dim=1)  # [B, H, W]
-    preds = preds.view(preds.size(0), -1)  # [B, H*W]
-    targets = targets.view(targets.size(0), -1)  # [B, H*W]
+def fmeasure_score(preds, masks, positiveClass = 1, negativeClass = 0, eps=1e-6):
+    TP = torch.logical_and(preds == positiveClass, masks == positiveClass).sum(dim=(1, 2))
+    FP = torch.logical_and(preds == positiveClass, masks == negativeClass).sum(dim=(1, 2))
+    TN = torch.logical_and(preds == negativeClass, masks == negativeClass).sum(dim=(1, 2))
+    FN = torch.logical_and(preds == negativeClass, masks == positiveClass).sum(dim=(1, 2))
+    Fmeasure = (2 * TP) / (2*TP + FP + FN + eps)
+    return Fmeasure
 
-    intersection = ((preds == 1) & (targets == 1)).float().sum(1)
-    total = (preds == 1).float().sum(1) + (targets == 1).float().sum(1)
-
-    dice = (2 * intersection + smooth) / (total + smooth)
-    return dice.mean().item()
-
+def p4measure_score(preds, masks, eps=1e-6):
+    TP = torch.logical_and(preds == 1, masks == 1).sum(dim=(1, 2))
+    FP = torch.logical_and(preds == 1, masks == 0).sum(dim=(1, 2))
+    TN = torch.logical_and(preds == 0, masks == 0).sum(dim=(1, 2))
+    FN = torch.logical_and(preds == 0, masks == 1).sum(dim=(1, 2))
+    invTP = 1.0 / (TP + eps)
+    invTN = 1.0 / (TN + eps)
+    p4measure = 4.0 / ((invTP + invTN) * (FP + FN) + 4)
+    return p4measure
 
 def test_model(model, test_loader, test_dataset, device, visualize=True, max_vis=5):
     model.eval()
     total_iou = 0.0
-    total_dice = 0.0
+    total_p4 = 0.0
     count = 0
-    vis_count = 0
+    total_tp = 0
+    total_fp = 0
+    total_tn = 0
+    total_fn = 0
+
+    total_fmeasurePos1 = 0
+    total_fmeasurePos0 = 0
 
     with torch.no_grad():
-        for i, (images, masks) in enumerate(test_loader):
+        for i, (images, imgpaths, masks, maskpaths, color_masks, cmaskspaths) in enumerate(test_loader):
             images = images.to(device)
             masks = masks.to(device)
             outputs = model(images)
+            preds = outputs.argmax(dim=1)
 
-            iou = iou_score(outputs, masks)
-            dice = dice_score(outputs, masks)
+            TPinBatch = torch.logical_and(preds == 1, masks == 1).sum(dim=(1, 2))
+            FPinBatch = torch.logical_and(preds == 1, masks == 0).sum(dim=(1, 2))
+            TNinBatch = torch.logical_and(preds == 0, masks == 0).sum(dim=(1, 2))
+            FNinBatch = torch.logical_and(preds == 0, masks == 1).sum(dim=(1, 2))
+           
+            iouInBatch = iou_score(preds, masks)
+            p4InBatch = p4measure_score(preds, masks)
 
-            print(f"[{i}] IoU: {iou:.8f} | Dice: {dice:.8f}")
-            total_iou += iou
-            total_dice += dice
-            count += 1
-
-            if visualize and vis_count < max_vis:
-                img_path = test_dataset.image_paths[i]
+            fmeasureInBatchPos1 = fmeasure_score(preds, masks, 1, 0)
+            fmeasureInBatchPos0 = fmeasure_score(preds, masks, 0, 1)
+            
+            for idx in range(images.size(0)):
+                img_path = imgpaths[idx]
                 img_name = os.path.basename(img_path)
-
                 orig_img = np.array(Image.open(img_path).convert("L"))
-                orig_color_mask = np.array(Image.open(test_dataset.colored_mask_paths[i]).convert("RGB"))
-                binary_mask = masks[0].cpu().numpy()
+                color_img = np.array(color_masks[idx])
+                binary_mask = masks[idx].cpu().numpy()
+                pred_mask = preds[idx].cpu().numpy()
+                
+                total_iou += iouInBatch[idx]
+                total_p4 += p4InBatch[idx]
+                total_fmeasurePos1 += fmeasureInBatchPos1[idx]
+                total_fmeasurePos0 += fmeasureInBatchPos0[idx]
+                total_tp += TPinBatch[idx]
+                total_fp += FPinBatch[idx]
+                total_tn += TNinBatch[idx]
+                total_fn += FNinBatch[idx]
 
-                pred_mask = torch.argmax(outputs[0], dim=0).cpu().numpy()
-
+                count += 1
+                    
+                print(f'---> {img_name} <---')
+                print(f'IoU: {iouInBatch[idx]:.8f}, P4: {p4InBatch[idx]:.8f}')
+                print(f'F1 (1): {fmeasureInBatchPos1[idx]:.8f}, F1 (0): {fmeasureInBatchPos0[idx]:.8f}')
+                print(f'Contingency table (confusion matrix): \n' +
+                      f'\t TP: {TPinBatch[idx]} \t FN: {FNinBatch[idx]}\n' + 
+                      f'\t FP: {FPinBatch[idx]} \t TN {TNinBatch[idx]}')
+                
                 fig, axs = plt.subplots(1, 4, figsize=(18, 4))
                 axs[0].imshow(orig_img, cmap="gray")
-                axs[0].set_title(f"{img_name}", fontsize=10)
-                axs[1].imshow(orig_color_mask)
-                axs[1].set_title("Original mask (RGB)")
-                axs[2].imshow(binary_mask, cmap="gray")
-                axs[2].set_title("Binary mask")
-                axs[3].imshow(pred_mask, cmap="gray")
-                axs[3].set_title("Prediction")
+                axs[0].set_title(f"Orig: {img_name}")
+
+                axs[1].imshow(binary_mask, cmap="gray")
+                axs[1].set_title(f"GT Mask")
+
+                axs[2].imshow(pred_mask, cmap="gray")
+                axs[2].set_title(f"Pred Mask")
+
+                axs[3].imshow(color_img)
+                axs[3].set_title("Color Mask")
+
                 for ax in axs:
-                    ax.axis("off")
-                plt.tight_layout()
+                    ax.axis('off')
                 plt.show()
 
-                vis_count += 1
+    invTP = 1.0 / total_tp
+    invTN = 1.0 / total_tn
 
-    print(f"\n=== TOTAL IoU: {total_iou / count:.8f} | Dice: {total_dice / count:.8f} ===")
+    print(f"\n---> MEAN <---\nIoU: {total_iou / count:.10f}\nP4: {total_p4 / count:.10f}")
+    print(f"F1 (1): {total_fmeasurePos1 / count:.10f} \nF1 (0): {total_fmeasurePos0 / count:.10f}")
+    print(f"\n---> TOTAL \nIoU: {total_tp / (total_tp + total_fp + total_fn):.10f}\nP4: {4.0 / ((invTP + invTN) * (total_fp + total_fn) + 4):.10f}")
+    print(f"F1 (1): {(2*total_tp) / (2*total_tp + total_fp + total_fn):.10f} \nF1 (0): {(2*total_tn) / (2*total_tn + total_fp + total_fn):.10f}")

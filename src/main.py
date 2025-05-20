@@ -12,6 +12,7 @@ from src.preprocessing import binarizeMaskDir, cropLineBelow, slidingWindowPatch
 from src.test import test_model
 
 def main():
+
     # ---> TESTING MODEL
     with open(r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\unet-project-torch\config\train_config.json") as f:
         cfg = json.load(f)
@@ -28,9 +29,9 @@ def main():
 
     model = build_model(cfg["model"]).to(device)
     #load_checkpoint(model, "/home/VizaVi/unet-project-torch/checkpoints/model_epoch_30.pth")
-    #model.eval()
+    model.eval()
 
-    test_model(model, test_loader, device, visualize=True, max_vis=30)
+    test_model(model, test_loader, test_dataset, device, visualize=True, max_vis=30)
         
 def mainGlobal():
     # ---> MASKS PREPROCESSING
@@ -57,34 +58,38 @@ def mainGlobal():
     )
 
     # ---> CROPPING IMAGES AND MASKS
+    #(1792 - 512) / 256 = 7 - 2 = 5
+    #(2560 - 512) / 256 = 10 - 2 = 8 -> 40*13=520
+    #(1792 - 512) / 128 = 14 - 4 = 10
+    #(2560 - 512) / 128 = 20 - 4 = 16 -> 160*13=2080
     """ 
     Croping black line below,
     cutting img and masks with sliding window
     """
-    imagesDirPath = r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\unet-project-torch\dataset\raw\images\BSE"
+    imagesDirPath = r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\dataset\raw\images\BSE"
     slidingWindowPatchDir(imgDir = imagesDirPath, 
                           imgMode='L',
                           patch_size = (512, 512),
-                          stride = (256, 256),
-                          save_dir=r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\unet-project-torch\dataset\images",
+                          stride = (128, 128),
+                          save_dir=r"M:\train-dataset-stride-128\images",
                           visualize=False
     )
 
-    coloredMasksDirPath = r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\unet-project-torch\dataset\raw\masks\BSE"
+    coloredMasksDirPath = r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\dataset\raw\masks\BSE"
     slidingWindowPatchDir(imgDir = coloredMasksDirPath, 
                           imgMode='RGB',
                           patch_size = (512, 512),
-                          stride = (256, 256),
-                          save_dir=r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\unet-project-torch\dataset\masks\croped-colored",
+                          stride = (128, 128),
+                          save_dir=r"M:\train-dataset-stride-128\masks\croped-colored",
                           visualize=False
     )
 
-    masksDirPath = r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\unet-project-torch\dataset\masks\uncroped"
+    masksDirPath = r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\dataset\masks\uncroped"
     slidingWindowPatchDir(imgDir = masksDirPath, 
                           imgMode='L',
                           patch_size = (512, 512),
-                          stride = (256, 256),
-                          save_dir=r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\unet-project-torch\dataset\masks",
+                          stride = (128, 128),
+                          save_dir=r"M:\train-dataset-stride-128\masks",
                           visualize=False
     )
 
@@ -92,12 +97,12 @@ def mainGlobal():
     splitDatasetInDirs(
         trainSamplesCounts=80,
         testSamplesCounts=20,
-        sourceImgDir=r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\dataset\images",
-        sourceColoredMasksDir = r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\dataset\masks\croped-colored",
-        sourceMasksDir=r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\dataset\masks",
-        outputBaseDir=r"M:\train-dataset"
+        sourceImgDir=r"M:\train-dataset-stride-128\images",
+        sourceMasksDir=r"M:\train-dataset-stride-128\masks",
+        sourceColoredMasksDir = r"M:\train-dataset-stride-128\masks\croped-colored",
+        outputBaseDir=r"M:\train-dataset-stride-128\train_80"
     )
-    trainDatasetPath = r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\unet-project-torch\train-dataset\train_80"
+    trainDatasetPath = r"M:\train-dataset-stride-128\train_80"
 
     # ---> MODEL CONFIGURATION
     with open(r"C:\Users\Вика\YandexDisk-pawlova12\РАБОТА\BIOFILMS\unet-project\unet-project-torch\config\train_config.json") as f:
@@ -131,9 +136,9 @@ def mainGlobal():
 
     model = build_model(cfg["model"]).to(device)
     #load_checkpoint(model, "/home/VizaVi/unet-project-torch/checkpoints/model_epoch_30.pth")
-    #model.eval()
+    model.eval()
 
-    test_model(model, test_loader, device, visualize=True, max_vis=30)
+    test_model(model, test_loader, test_dataset, device, visualize=True, max_vis=30)
 
 if __name__ == "__main__":
     main()

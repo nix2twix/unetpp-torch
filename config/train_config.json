@@ -1,12 +1,12 @@
 {
   "paths": {
-    "images": "M:\\train-dataset\\test_20\\images",
-    "masks": "M:\\train-dataset\\test_20\\masks",
-    "colored_masks": "M:\\train-dataset\\test_20\\masks\\colored-masks",
+    "images": "M:\\train-dataset-stride-128\\test_20\\images",
+    "masks": "M:\\train-dataset-stride-128\\test_20\\masks",
+    "colored_masks": "M:\\train-dataset-stride-128\\test_20\\masks\\colored-masks",
     "output_dir": "M:\train-dataset\\checkpoints"
   },
   "train": {
-    "batch_size": 2,
+    "batch_size": 1,
     "epochs": 2,
     "criterion": "CrossEntropyLoss",
     "optimizer": null,

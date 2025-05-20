@@ -22,17 +22,17 @@ class BiofilmDataset(Dataset):
         self.mode = mode
 
         image_paths = [os.path.join(image_dir, f) for f in listdir(image_dir) if isfile(join(image_dir, f))]
-        print(f"---> IMAGES LOAD: {len(image_paths)}")
-        
-        mask_paths = [os.path.join(mask_dir, f) for f in listdir(mask_dir) if isfile(join(mask_dir, f))]
-        print(f"---> MASKS LOAD: {len(mask_paths)}")
-        
-        colored_mask_paths = [os.path.join(colored_mask_dir, f) for f in listdir(colored_mask_dir) if isfile(join(colored_mask_dir, f))]
-        print(f"---> COLORED MASKS LOAD: {len(colored_mask_paths)}")
+        print(f"---> IMAGES LOAD: {len(image_paths)} from {image_dir}")
 
-        self.image_paths = image_paths
-        self.mask_paths = mask_paths
-        self.colored_mask_paths = colored_mask_paths
+        mask_paths = [os.path.join(mask_dir, f) for f in listdir(mask_dir) if isfile(join(mask_dir, f))]
+        print(f"---> MASKS LOAD: {len(mask_paths)} from {mask_dir}")
+
+        colored_mask_paths = [os.path.join(colored_mask_dir, f) for f in listdir(colored_mask_dir) if isfile(join(colored_mask_dir, f))]
+        print(f"---> COLORED MASKS LOAD: {len(colored_mask_paths)} from {colored_mask_dir}")
+
+        self.image_paths = sorted(image_paths)
+        self.mask_paths = sorted(mask_paths)
+        self.colored_mask_paths = sorted(colored_mask_paths)
         self.transform = self.get_transforms()
 
     def get_transforms(self):
@@ -40,9 +40,9 @@ class BiofilmDataset(Dataset):
         if self.augmentation:
             aug_list.append(A.HorizontalFlip(p=0.5))
             aug_list.append(A.VerticalFlip(p=0.5))
-        
+
         aug_list += [
-            A.Normalize(mean=0, std=1, max_pixel_value = 255, normalization = "standard"), 
+            A.Normalize(mean = 0, std = 1), #image mode
             # img = (img - mean * 255) / (std * 255)
             ToTensorV2()
         ]
@@ -60,6 +60,9 @@ class BiofilmDataset(Dataset):
     def __getitem__(self, idx):
         image = Image.open(self.image_paths[idx]).convert('L')  # grayscale
         mask = Image.open(self.mask_paths[idx]).convert('L')
+        color_mask = Image.open(self.colored_mask_paths[idx]).convert("RGB")
+        color_mask = np.array(color_mask)  # [H, W, 3]
+
         image = self.make_clahe(image)
         mask = np.array(mask)
         mask = (mask > 127).astype(np.uint8)
@@ -68,7 +71,7 @@ class BiofilmDataset(Dataset):
         image = augmented['image']
         mask = augmented['mask'].long()  
 
-        return image, mask
+        return image, self.image_paths[idx], mask, self.mask_paths[idx], color_mask, self.colored_mask_paths[idx]
 
 
 def splitDatasetInDirs(trainSamplesCounts=80, testSamplesCounts=20,
@@ -110,8 +113,6 @@ def splitDatasetInDirs(trainSamplesCounts=80, testSamplesCounts=20,
     print(f"Всего файлов: {total}")
     print(f"Train: {len(train_files)} → {train_img_dir}")
     print(f"Test: {len(test_files)} → {test_img_dir}")
-
-
 
 def visualize_sample(dataset, n=3):
     """Визуализация первых N примеров"""
