@@ -74,7 +74,7 @@ def binarizeMask(maskPath, maskMode, masksList, targetClassColor, secondClassCol
     maskNP = np.array(originalMask.convert("RGB"))
     print(f"The mask {os.path.basename(maskPath)} [{originalMask.size[0]} x {originalMask.size[1]}]" 
                 + f" ({originalMask.size[0] * originalMask.size[1]} pixels)")
-       
+     
     # ---> Исходное изображение-маска
     print("Before binarization:") 
     getRange(originalMask)
@@ -87,15 +87,7 @@ def binarizeMask(maskPath, maskMode, masksList, targetClassColor, secondClassCol
     print(f"Total pixels in not target classes {countOtherClasses}\n")
 
     # ---> Бинаризация
-    targetRGB = next((rgb for rgb in masksList.items() if rgb == targetClassColor), None)
-    bgRGB = next((rgb for rgb in masksList.items() if rgb == secondClassColor), None)
-
-    if targetRGB is None:
-        raise ValueError(f"Class '{targetClassColor}' not found in {maskPath}")
-    if bgRGB is None:
-        raise ValueError(f"Class '{secondClassColor}' not found in {maskPath}")
-
-    binMask = np.all(maskNP == targetRGB, axis=-1).astype(np.uint8)
+    binMask = np.all(maskNP == targetClassColor, axis=-1).astype(np.uint8)
 
     print(f"\nAfter binarization:")
     getRange(binMask)
@@ -158,7 +150,7 @@ def slidingWindowPatch(imgPIL, img_name, patch_size=(512, 512), stride=(128, 128
     for y in y_coords:
         for x in x_coords:
             patch = imgPIL.crop((x, y, x + patch_w, y + patch_h))
-            patch_path = os.path.join(save_dir, f"{base_name}.{patch_id:03d}.png")
+            patch_path = os.path.join(save_dir, f"{base_name}.{patch_id:03d}.{x}_{y}.png")
             patch.save(patch_path)
             patch_list.append(patch)
             coords.append((x, y, patch_id))
@@ -184,10 +176,12 @@ def slidingWindowPatch(imgPIL, img_name, patch_size=(512, 512), stride=(128, 128
         ax.axis('off')
         plt.tight_layout()
         plt.show()
+    return save_dir
 
 def slidingWindowPatchDir(imgDir, imgMode, patch_size=(512, 512), stride=(128, 128), save_dir=None, visualize=True):
     for imgName in os.scandir(imgDir):
-        print(f"---> Current image: {imgName}")
-        img = Image.open(imgName)
+        print(f"---> Current image: {imgName.path}")
+        img = Image.open(imgName.path)
         img = img.convert(imgMode)
         slidingWindowPatch(img, imgName, patch_size, stride, save_dir, visualize)
+    return save_dir

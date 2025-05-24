@@ -1,13 +1,24 @@
+from tempfile import tempdir
 import torch
+from pathlib import Path
+import json
 from torch.utils.data import DataLoader
+from src.dataset import BiofilmDataset, TestDataset, splitDatasetInDirs, leaveOneSEMimageOut
 import matplotlib.pyplot as plt
 import numpy as np
+import torch.nn as nn
 import os
 from PIL import Image
 from src.model import build_model
+from src.preprocessing import binarizeMaskDir, cropLineBelow, slidingWindowPatchDir, slidingWindowPatch
+import re
+pattern = r'\.(\d+)_(\d+)\.png$'
+
 def load_checkpoint(model, checkpoint_path):
-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
-    model.load_state_dict(checkpoint)
+    model = nn.DataParallel(model) 
+    model.load_state_dict(torch.load(checkpoint_path, map_location="cpu"))
+    model = model.module    
+
     print(f"Model loaded from: {checkpoint_path}")
 
 def iou_score(preds, masks, eps=1e-6): 
@@ -40,7 +51,8 @@ def p4measure_score(preds, masks, eps=1e-6):
     p4measure = 4.0 / ((invTP + invTN) * (FP + FN) + 4)
     return p4measure
 
-def test_model(model, test_loader, test_dataset, device, visualize=True, max_vis=5):
+def test_model(model, test_loader, test_dataset, device, visualize=True, max_vis=5, 
+               saveDir = None):
     model.eval()
     total_iou = 0.0
     total_p4 = 0.0
@@ -52,14 +64,14 @@ def test_model(model, test_loader, test_dataset, device, visualize=True, max_vis
 
     total_fmeasurePos1 = 0
     total_fmeasurePos0 = 0
-
+    
     with torch.no_grad():
         for i, (images, imgpaths, masks, maskpaths, color_masks, cmaskspaths) in enumerate(test_loader):
             images = images.to(device)
             masks = masks.to(device)
             outputs = model(images)
             preds = outputs.argmax(dim=1)
-
+            
             TPinBatch = torch.logical_and(preds == 1, masks == 1).sum(dim=(1, 2))
             FPinBatch = torch.logical_and(preds == 1, masks == 0).sum(dim=(1, 2))
             TNinBatch = torch.logical_and(preds == 0, masks == 0).sum(dim=(1, 2))
@@ -74,10 +86,17 @@ def test_model(model, test_loader, test_dataset, device, visualize=True, max_vis
             for idx in range(images.size(0)):
                 img_path = imgpaths[idx]
                 img_name = os.path.basename(img_path)
+                
+                match = re.search(pattern, img_name)
+                if match:
+                    x = match.group(1)
+                    y = match.group(2)
+
                 orig_img = np.array(Image.open(img_path).convert("L"))
                 color_img = np.array(color_masks[idx])
                 binary_mask = masks[idx].cpu().numpy()
                 pred_mask = preds[idx].cpu().numpy()
+           
                 
                 total_iou += iouInBatch[idx]
                 total_p4 += p4InBatch[idx]
@@ -100,20 +119,17 @@ def test_model(model, test_loader, test_dataset, device, visualize=True, max_vis
                 fig, axs = plt.subplots(1, 4, figsize=(18, 4))
                 axs[0].imshow(orig_img, cmap="gray")
                 axs[0].set_title(f"Orig: {img_name}")
-
                 axs[1].imshow(binary_mask, cmap="gray")
                 axs[1].set_title(f"GT Mask")
-
                 axs[2].imshow(pred_mask, cmap="gray")
                 axs[2].set_title(f"Pred Mask")
-
                 axs[3].imshow(color_img)
                 axs[3].set_title("Color Mask")
 
                 for ax in axs:
                     ax.axis('off')
                 plt.show()
-
+                
     invTP = 1.0 / total_tp
     invTN = 1.0 / total_tn
 
@@ -121,3 +137,4 @@ def test_model(model, test_loader, test_dataset, device, visualize=True, max_vis
     print(f"F1 (1): {total_fmeasurePos1 / count:.10f} \nF1 (0): {total_fmeasurePos0 / count:.10f}")
     print(f"\n---> TOTAL \nIoU: {total_tp / (total_tp + total_fp + total_fn):.10f}\nP4: {4.0 / ((invTP + invTN) * (total_fp + total_fn) + 4):.10f}")
     print(f"F1 (1): {(2*total_tp) / (2*total_tp + total_fp + total_fn):.10f} \nF1 (0): {(2*total_tn) / (2*total_tn + total_fp + total_fn):.10f}")
+

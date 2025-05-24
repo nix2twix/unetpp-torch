@@ -26,13 +26,13 @@ class BiofilmDataset(Dataset):
 
         mask_paths = [os.path.join(mask_dir, f) for f in listdir(mask_dir) if isfile(join(mask_dir, f))]
         print(f"---> MASKS LOAD: {len(mask_paths)} from {mask_dir}")
-
+        self.mask_paths = sorted(mask_paths)
+        
         colored_mask_paths = [os.path.join(colored_mask_dir, f) for f in listdir(colored_mask_dir) if isfile(join(colored_mask_dir, f))]
         print(f"---> COLORED MASKS LOAD: {len(colored_mask_paths)} from {colored_mask_dir}")
+        self.colored_mask_paths = sorted(colored_mask_paths)
 
         self.image_paths = sorted(image_paths)
-        self.mask_paths = sorted(mask_paths)
-        self.colored_mask_paths = sorted(colored_mask_paths)
         self.transform = self.get_transforms()
 
     def get_transforms(self):
@@ -73,9 +73,19 @@ class BiofilmDataset(Dataset):
 
         return image, self.image_paths[idx], mask, self.mask_paths[idx], color_mask, self.colored_mask_paths[idx]
 
+def leaveOneSEMimageOut(imgPath = None, maskPath = None, outputBaseDir = None):
+    
+    testImageSourceDir = os.path.join(outputBaseDir, f"testSourceDir", "images")
+    testMaskSourceDir = os.path.join(outputBaseDir, f"testSourceDir", "masks")
 
+    os.makedirs(testImageSourceDir, exist_ok=True)
+    shutil.move(imgPath, testImageSourceDir)
+    shutil.move(maskPath, testMaskSourceDir)
+    print(f"---> The image {os.path.basename(imgPath)} and mask {os.path.basename(maskPath)} set as train in {testImageSourceDir}")
+    
 def splitDatasetInDirs(trainSamplesCounts=80, testSamplesCounts=20,
-                       sourceImgDir=None, sourceMasksDir=None, sourceColoredMasks = None, outputBaseDir=None):
+                       sourceImgDir=None, sourceMasksDir=None, sourceColoredMasks = None, 
+                       outputBaseDir=None):
     
     image_files = sorted(os.listdir(sourceImgDir))
     total = len(image_files)
@@ -114,25 +124,44 @@ def splitDatasetInDirs(trainSamplesCounts=80, testSamplesCounts=20,
     print(f"Train: {len(train_files)} → {train_img_dir}")
     print(f"Test: {len(test_files)} → {test_img_dir}")
 
-def visualize_sample(dataset, n=3):
-    """Визуализация первых N примеров"""
-    for i in range(min(n, len(dataset))):
-        img, mask = dataset[i]
-        
-        if isinstance(img, torch.Tensor):
-            img = img.numpy().squeeze()
-        if isinstance(mask, torch.Tensor):
-            mask = mask.numpy().squeeze()
-        
-        plt.figure(figsize=(10, 4))
-        plt.subplot(1, 2, 1)
-        plt.title(f"Image {i}")
-        plt.imshow(img, cmap='gray')
-        plt.axis('off')
-        
-        plt.subplot(1, 2, 2)
-        plt.title(f"Mask {i}")
-        plt.imshow(mask, cmap='gray')
-        plt.axis('off')
-        
-        plt.show()
+class TestDataset(Dataset):
+    def __init__(self, image_dir, augmentation=False, mode="train"):
+        self.image_dir = image_dir
+        self.augmentation = augmentation
+        self.mode = mode
+
+        image_paths = [os.path.join(image_dir, f) for f in listdir(image_dir) if isfile(join(image_dir, f))]
+        print(f"---> IMAGES LOAD: {len(image_paths)} from {image_dir}")
+
+        self.image_paths = sorted(image_paths)
+        self.transform = self.get_transforms()
+
+    def get_transforms(self):
+        aug_list = []
+        if self.augmentation:
+            aug_list.append(A.HorizontalFlip(p=0.5))
+            aug_list.append(A.VerticalFlip(p=0.5))
+
+        aug_list += [
+            A.Normalize(mean = 0, std = 1), #image mode
+            # img = (img - mean * 255) / (std * 255)
+            ToTensorV2()
+        ]
+        return A.Compose(aug_list)
+
+    def make_clahe(self, img):
+        img_np = np.array(img)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        img_clahe = clahe.apply(img_np)
+        return Image.fromarray(img_clahe)
+
+    def __len__(self):
+        return len(self.image_paths)
+
+    def __getitem__(self, idx):
+        image = Image.open(self.image_paths[idx]).convert('L')  # grayscale
+        image = self.make_clahe(image)
+        augmented = self.transform(image=np.array(image))
+        image = augmented['image']
+
+        return image, self.image_paths[idx]

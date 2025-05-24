@@ -8,8 +8,8 @@ def build_model(cfg):
         encoder_name=cfg.get('encoder_name', 'resnet34'),
         encoder_weights=cfg.get('encoder_weights', 'imagenet'),
         in_channels=1,  # grayscale
-        classes=2,
-        activation=cfg.get('activation_function', None)
+        classes=cfg.get('num_classes', 2),
+        activation=cfg.get('activation', None)
     )
     return model
 

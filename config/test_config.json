@@ -1,13 +1,13 @@
 {
   "paths": {
-    "images": "M:\\train-dataset-stride-128\\test_20\\images",
+    "images": "C:\\Users\\Victory\\YandexDisk\\WORK\\BIOFILMS\\unet-project\\process",
     "masks": "M:\\train-dataset-stride-128\\test_20\\masks",
     "colored_masks": "M:\\train-dataset-stride-128\\test_20\\masks\\colored-masks",
     "output_dir": "M:\train-dataset\\checkpoints"
   },
   "train": {
-    "batch_size": 50,
-    "epochs": 300,
+    "batch_size": 1,
+    "epochs": 2,
     "criterion": "CrossEntropyLoss",
     "optimizer": null,
     "learning_rate": 1e-4
